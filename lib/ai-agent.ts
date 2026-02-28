@@ -1,5 +1,6 @@
-import { generateText } from "ai";
+import { generateText, ToolLoopAgent, tool } from "ai";
 import { google } from "@ai-sdk/google";
+import { z } from "zod";
 
 // ============================================================
 // MODEL
@@ -7,10 +8,19 @@ import { google } from "@ai-sdk/google";
 
 const model = google("gemini-2.0-flash");
 
+function stripCodeFences(text: string): string {
+  // Remove fenced markdown wrappers if the model returns ```text ... ```
+  return text
+    .replace(/^```[a-zA-Z0-9_-]*\s*\n?/, "")
+    .replace(/\n?```$/, "")
+    .trim();
+}
+
 // ============================================================
 // TOOLS
 // ============================================================
 
+// function to get information from a company (avoid changing this)
 async function researchCompany(companyName: string): Promise<string> {
   console.log(`[Tool] Researching: ${companyName}`);
 
@@ -63,33 +73,6 @@ async function analyzeJob(jobDescription: string): Promise<string> {
   return result.text;
 }
 
-async function writeCoverLetter(
-  resume: string,
-  companyName: string,
-  companyInfo: string,
-  jobAnalysis: string
-): Promise<string> {
-  console.log("[Tool] Writing cover letter...");
-
-  const result = await generateText({
-    model,
-    prompt: `Write a 3-4 paragraph cover letter for ${companyName}.
-
-RESUME:
-${resume}
-
-COMPANY INFO:
-${companyInfo || "Not available"}
-
-JOB REQUIREMENTS:
-${jobAnalysis}
-
-Write in first person. Be professional but personable. Return only the letter body.`,
-  });
-
-  return result.text;
-}
-
 // ============================================================
 // AGENT
 // ============================================================
@@ -97,24 +80,65 @@ Write in first person. Be professional but personable. Return only the letter bo
 export async function generateCoverLetter(
   resume: string,
   companyName: string,
-  jobDescription: string
+  jobDescription: string,
 ): Promise<{ coverLetter: string; companyInfo: string }> {
   console.log(`[Agent] Starting for ${companyName}`);
 
-  // Step 1: Research company
-  const companyInfo = await researchCompany(companyName);
+  // Keep per-request tool results local so concurrent requests do not share state.
+  let companyInfo = "";
 
-  // Step 2: Analyze job
-  const jobAnalysis = await analyzeJob(jobDescription.slice(0, 4000));
+  const coverLetterAgent = new ToolLoopAgent({
+    model,
+    instructions: `You are an expert cover letter writer.
+Use available tools whenever they help you produce a stronger, better-grounded cover letter.
+In normal cases, gather company context and job requirement analysis before writing.
+Write a 3-4 paragraph cover letter in first person.
+Be professional but personable.
+Return only the letter body.`,
+    tools: {
+      researchCompany: tool({
+        description:
+          "Research a company's mission, culture, values, and public positioning.",
+        inputSchema: z.object({
+          companyName: z.string().describe("The company to research"),
+        }),
+        execute: async ({ companyName }) => {
+          const info = await researchCompany(companyName);
+          companyInfo = info;
+          return { companyInfo: info || "Not available" };
+        },
+      }),
+      analyzeJob: tool({
+        description:
+          "Extract key skills, responsibilities, and qualifications from a job description.",
+        inputSchema: z.object({
+          jobDescription: z
+            .string()
+            .describe("Raw job description text to analyze"),
+        }),
+        execute: async ({ jobDescription }) => {
+          const analysis = await analyzeJob(jobDescription);
+          return { jobAnalysis: analysis };
+        },
+      }),
+    },
+  });
 
-  // Step 3: Write cover letter
-  const coverLetter = await writeCoverLetter(
-    resume.slice(0, 4000),
-    companyName,
-    companyInfo,
-    jobAnalysis
-  );
+  const result = await coverLetterAgent.generate({
+    prompt: `Create a cover letter for ${companyName}.
+
+RESUME:
+${resume.slice(0, 4000)}
+
+COMPANY NAME:
+${companyName}
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 4000)}
+
+Produce the best possible cover letter.`,
+  });
 
   console.log("[Agent] Complete");
-  return { coverLetter, companyInfo };
+  return { coverLetter: stripCodeFences(result.text), companyInfo };
 }
