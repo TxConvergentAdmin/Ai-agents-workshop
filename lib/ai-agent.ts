@@ -62,7 +62,7 @@ async function researchCompany(companyName: string): Promise<string> {
   }
 }
 
-//TODO: Write this function so that it will return, using the generateText function, key insigts from jobDescription
+//TODO: Write this function so that it will return, using the generateText function, key insigts from jobDescription. use: https://ai-sdk.dev/docs/ai-sdk-core/generating-text 
 
 async function analyzeJob(jobDescription: string): Promise<string> {
   console.log("[Tool] Analyzing job...");

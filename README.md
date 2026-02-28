@@ -97,6 +97,23 @@ This project is designed as a 1-2 hour workshop demonstrating:
 - shadcn/ui component usage
 - Vercel AI SDK integration
 
+### Where to Look
+
+To complete the workshop assignment, focus on these key files:
+
+1. **`app/page.tsx`** - The main UI component. Understand how the frontend interacts with the API and handles user input.
+
+2. **`app/api/generate/route.ts`** - The API endpoint that receives requests and calls the AI agent. See how the backend processes requests.
+
+3. **`lib/ai-agent.ts`** - **This is where most of your work will be.** This file contains the AI agent logic, tools, and prompts. You'll modify this file to customize the agent's behavior and capabilities.
+
+### Helpful Resources
+
+These documentation links will help you complete the assignment:
+
+- [Generating Text with AI SDK](https://ai-sdk.dev/docs/ai-sdk-core/generating-text) - Learn how to use the `generateText` function
+- [Tools and Tool Calling](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling) - Learn how to define and use tools with AI agents
+
 ## License
 
 MIT
