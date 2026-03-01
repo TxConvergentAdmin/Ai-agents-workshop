@@ -131,6 +131,25 @@ These documentation links will help you complete the assignment:
 - [Generating Text with AI SDK](https://ai-sdk.dev/docs/ai-sdk-core/generating-text) - Learn how to use the `generateText` function
 - [Tools and Tool Calling](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling) - Learn how to define and use tools with AI agents
 
+## Some cool ideas to add !
+### Some cool ideas to add
+
+**1. Resume Job App Matcher**
+Add a `matchSkills` tool that compares the candidate's resume skills to the extracted job requirements and returns a gap analysis. Example below:
+
+```ts
+matchSkills: tool({
+  description: "Compare resume skills against job requirements and return matched/missing skills.",
+  inputSchema: z.object({ resume: z.string(), jobRequirements: z.string() }),
+  execute: async ({ resume, jobRequirements }) => {
+    const result = await generateText({
+      model,
+      prompt: `Compare these resume skills:\n${resume}\n\nAgainst these job requirements:\n${jobRequirements}\n\nList matched skills and skill gaps.`,
+    });
+    return { skillAnalysis: result.text };
+  },
+})
+```
 ## License
 
 MIT
